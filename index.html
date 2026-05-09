@@ -2,83 +2,102 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Avatar MediaPipe</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Avatar Vídeo + MediaPipe</title>
 
 <style>
+
 body{
     margin:0;
     overflow:hidden;
-    background:#111;
+    background:#000;
     font-family:Arial;
 }
 
-video{
+/* câmera */
+#camera{
     position:fixed;
-    top:0;
-    left:0;
+    inset:0;
     width:100%;
     height:100%;
     object-fit:cover;
     transform:scaleX(-1);
     opacity:0.25;
+    z-index:1;
 }
 
-#avatar{
+/* vídeo do personagem */
+#avatarVideo{
     position:absolute;
     left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    width:320px;
+    bottom:0;
+    transform:translateX(-50%);
+    width:340px;
+    z-index:2;
     pointer-events:none;
 }
 
-#body{
-    width:100%;
-}
-
+/* braço animado */
 #arm{
     position:absolute;
+    left:50%;
+    bottom:210px;
+
     width:130px;
-    left:170px;
-    top:110px;
 
     transform-origin:20px 20px;
+
+    z-index:3;
+
     transition:transform 0.03s linear;
+
+    pointer-events:none;
 }
 
-#info{
+/* texto */
+#status{
     position:fixed;
     top:10px;
     left:10px;
-    color:white;
     z-index:10;
+
+    color:white;
     background:rgba(0,0,0,0.5);
+
     padding:10px;
     border-radius:10px;
 }
+
 </style>
 </head>
 
 <body>
 
-<div id="info">
-Mova sua mão ✋
+<div id="status">
+Iniciando câmera...
 </div>
 
-<video id="video" autoplay playsinline></video>
+<!-- câmera -->
+<video id="camera" autoplay playsinline muted></video>
 
-<div id="avatar">
+<!-- vídeo do personagem -->
+<video id="avatarVideo"
+autoplay
+loop
+muted
+playsinline>
 
-    <!-- Corpo -->
-    <img id="body"
-    src="https://i.imgur.com/y0QZB8X.png">
+<source
+src="https://cdn.pixabay.com/video/2023/07/17/171996-846316185_large.mp4"
+type="video/mp4">
 
-    <!-- Braço -->
-    <img id="arm"
-    src="https://i.imgur.com/eM0Q5Gf.png">
+</video>
 
-</div>
+<!-- braço -->
+<img
+id="arm"
+src="https://i.imgur.com/eM0Q5Gf.png">
 
 <script type="module">
 
@@ -90,11 +109,19 @@ import {
     Camera
 } from "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js";
 
-const video = document.getElementById("video");
-const arm = document.getElementById("arm");
+const cameraVideo =
+document.getElementById("camera");
+
+const arm =
+document.getElementById("arm");
+
+const status =
+document.getElementById("status");
+
+/* MediaPipe */
 
 const hands = new Hands({
-    locateFile: (file)=>{
+    locateFile:(file)=>{
         return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
     }
 });
@@ -106,32 +133,59 @@ hands.setOptions({
     minTrackingConfidence:0.7
 });
 
+/* resultados */
+
 hands.onResults(results=>{
 
     if(results.multiHandLandmarks.length > 0){
 
-        const hand = results.multiHandLandmarks[0];
+        status.innerHTML =
+        "✋ MÃO DETECTADA";
 
-        // dedo indicador
-        const indexFinger = hand[8];
+        const hand =
+        results.multiHandLandmarks[0];
 
-        // posição horizontal
-        const x = indexFinger.x;
+        const finger =
+        hand[8];
 
-        // converte para ângulo
-        const angle = (x * 180) - 90;
+        /* posição da mão */
+        const x = finger.x;
+        const y = finger.y;
 
+        /* rotação */
+        const angle =
+        (x * 180) - 90;
+
+        /* mover braço */
         arm.style.transform =
-        `rotate(${angle}deg)`;
+        `
+        translateX(${x*120-60}px)
+        translateY(${y*80}px)
+        rotate(${angle}deg)
+        `;
+
+    }else{
+
+        status.innerHTML =
+        "❌ SEM MÃO";
 
     }
 
 });
 
-const camera = new Camera(video,{
+/* iniciar câmera */
+
+const camera = new Camera(
+cameraVideo,
+{
     onFrame: async ()=>{
-        await hands.send({image:video});
+
+        await hands.send({
+            image:cameraVideo
+        });
+
     },
+
     width:640,
     height:480
 });
